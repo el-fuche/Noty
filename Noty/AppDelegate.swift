@@ -8,15 +8,72 @@
 
 import UIKit
 import CoreData
+import MagicalRecord
+import UserNotifications
+import CoreLocation
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate,UNUserNotificationCenterDelegate,CLLocationManagerDelegate {
 
     var window: UIWindow?
+    
+    let locationManager = CLLocationManager()
+
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        UINavigationBar.appearance().barTintColor = UIColor.red
+        UINavigationBar.appearance().tintColor = UIColor.white
+        UINavigationBar.appearance().titleTextAttributes = [NSForegroundColorAttributeName : UIColor.white]
+        UIApplication.shared.statusBarStyle = .lightContent
+        setLocationManager()
+        let center = UNUserNotificationCenter.current()
+        let options: UNAuthorizationOptions = [.alert, .sound];
+        center.requestAuthorization(options: options) {
+            (granted, error) in
+            if !granted {
+                print("Something went wrong")
+            }
+        }
+        center.delegate = self
+        center.getNotificationSettings { (settings) in
+            if settings.authorizationStatus != .authorized {
+                // Notifications not allowed
+            }
+        }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Don't forget"
+        content.body = "Buy some milk"
+        content.sound = UNNotificationSound.default()
+        content.setValue(true, forKey: "shouldAlwaysAlertWhileAppIsForeground")
+
+        
+//        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 60, repeats: false)
+        let startLocation: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 60.0, longitude: 60.0)
+        let monitoredRegion = CLCircularRegion(center: startLocation, radius: 100, identifier: "Region Test")
+        
+//        var region = CLRegion(coder : CLLocationCoordinate2D(latitude: 0, longitude: 0)
+        
+        let trigger = UNLocationNotificationTrigger(region:monitoredRegion, repeats:true)
+
+        
+        let identifier = "UYLLocalNotification"
+        let request = UNNotificationRequest(identifier: identifier,
+                                            content: content, trigger: trigger)
+        print(trigger)
+        center.add(request, withCompletionHandler: { (error) in
+            
+            if let error = error {
+                print(error)
+                // Something went wrong
+            }
+        })
+
+        
+        MagicalRecord.setupCoreDataStack(withStoreNamed: "Note")
+
         return true
     }
 
@@ -88,6 +145,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
     }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        print("TEST")
+        completionHandler(UNNotificationPresentationOptions.alert)
+    }
+    
+    func setLocationManager(){
+        
+        if (CLLocationManager.locationServicesEnabled() == true) {
+            self.locationManager.requestAlwaysAuthorization()
+            self.locationManager.requestWhenInUseAuthorization()
+            
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+            locationManager.startUpdatingLocation()
+            
+            print("latitude : \(locationManager.location?.coordinate.latitude), \nlongitude : \(locationManager.location?.coordinate.longitude) \n")
+            //
+            //            lat = locationManager.location?.coordinate.latitude
+            //            lng = locationManager.location?.coordinate.longitude
+            //
+            //                        lat = 0.0
+            //                        lng = 0.0
+            
+        }
+        
+    }
+
 
 }
 
